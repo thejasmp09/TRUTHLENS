@@ -1,0 +1,60 @@
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.tox/
+*.cover
+.coverage
+.cache
+.pytest_cache/
+
+# Virtualenv
+/.venv
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+
+# Database and generated reports
+truthlens.db
+reports/
+
+# Logs
+*.log
+
+# Misc
+*.sqlite3
+.env
+__pycache__/
+*.pyc
+reports/
