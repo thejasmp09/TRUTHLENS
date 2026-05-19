@@ -17,7 +17,7 @@ from truthlens.db import init_db
 from truthlens.pipeline import analyze_post_with_agents
 from truthlens.report import generate_report_html
 
-SAMPLE_POST = "Raghav Chadha joined BJP"
+SAMPLE_POST = "leak of scanned copy of union budget 2026"
 
 
 def main():

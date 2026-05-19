@@ -47,8 +47,14 @@ def contains_checkable_claims(text: str) -> bool:
     )
 
     try:
+        # If running in mock mode, assume we should analyze so reports get populated
+        if getattr(config, "MOCK_LLM", False):
+            logger.info("MOCK_LLM enabled - skipping triage and assuming checkable claims")
+            return True
+
         answer = call_gemini(prompt).lower()
-        return answer.startwith("yes")
+        # Accept either strict 'yes' or presence of 'yes' in the reply
+        return answer.strip().startswith("yes") or " yes" in answer
     except Exception:
         logger.exception("Gemini claim-check call failed, defaulting to True")
         return True

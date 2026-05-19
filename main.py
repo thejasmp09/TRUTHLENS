@@ -137,6 +137,7 @@ def process() -> int:
                 platform=post["platform"],
                 author=post["author"],
                 created_at=post["fetched_at"],
+                agent_results=getattr(report, 'agent_results', None),
             )
 
             report_id = save_report(
@@ -147,6 +148,7 @@ def process() -> int:
                 autopsy_html=html,
                 overall_verdict=report.overall_verdict,
                 confidence=report.confidence,
+                agent_results=report.agent_results if getattr(report, 'agent_results', None) is not None else None,
             )
 
             # Re-generate with correct ID
@@ -158,7 +160,81 @@ def process() -> int:
                 platform=post["platform"],
                 author=post["author"],
                 created_at=post["fetched_at"],
+                agent_results=getattr(report, 'agent_results', None),
             )
+
+            # Print structured verdict summary to console
+            try:
+                ar = report  # AutopsyReport
+                agents = getattr(ar, 'agent_results', {}) or {}
+                checker = agents.get('claim_checker', {})
+                tracer = agents.get('origin_tracer', {})
+                counter = agents.get('counter_evidence', {})
+                mapper = agents.get('spread_mapper', {})
+
+                print('\n' + '='*60)
+                print(f"Report for post: {post['id']}")
+                print(f"Platform: {post['platform']} | Author: {post['author']}")
+                print(f"Overall verdict: {ar.overall_verdict} (Confidence: {ar.confidence})")
+                print('-'*60)
+
+                # Per-claim details
+                for v in report.verdicts:
+                    print(f"Claim: {v.claim}")
+                    print(f"  Verdict: {v.verdict}")
+                    if v.explanation:
+                        print(f"  Explanation: {v.explanation}")
+                    # Evidence URLs
+                    urls = []
+                    for s in v.evidence or []:
+                        u = s.get('url') or s.get('link') or s.get('uri')
+                        if u:
+                            urls.append(u)
+                    if urls:
+                        print(f"  Evidence URLs: {urls[:3]}")
+
+                    # Origin info
+                    try:
+                        origins_list = tracer.get('origins', [])
+                        matching = [o for o in origins_list if o.get('claim') == v.claim]
+                        if matching:
+                            o = matching[0]
+                            if o.get('probable_origin'):
+                                print(f"  Probable origin: {o.get('probable_origin')}")
+                            if o.get('original_context'):
+                                print(f"  Original context: {o.get('original_context')}")
+                    except Exception:
+                        pass
+
+                    # Counter evidence
+                    try:
+                        ce_list = counter.get('counter_evidence', [])
+                        matching_ce = [c for c in ce_list if c.get('claim') == v.claim]
+                        if matching_ce:
+                            ce = matching_ce[0]
+                            if ce.get('counter_evidence_exists'):
+                                print(f"  Counter-evidence: {ce.get('counter_evidence_exists')}")
+                            if ce.get('strongest_rebuttal'):
+                                print(f"  Strongest rebuttal: {ce.get('strongest_rebuttal')}")
+                    except Exception:
+                        pass
+
+                    print('-'*40)
+
+                # Spread summary (top-level)
+                try:
+                    spread = mapper.get('spread', {})
+                    if spread:
+                        print('Spread summary:')
+                        print(f"  Spread level: {spread.get('spread_level')}")
+                        print(f"  Platforms affected: {spread.get('platforms_affected')}")
+                        if spread.get('key_amplifiers'):
+                            print(f"  Key amplifiers: {spread.get('key_amplifiers')}")
+                        print('-'*60)
+                except Exception:
+                    pass
+            except Exception:
+                logger.exception('Failed to print structured verdict summary')
 
             mark_processed(post["id"])
             processed += 1
@@ -192,7 +268,8 @@ def publish() -> int:
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         """SELECT r.id, r.overall_verdict, r.created_at, p.platform
-           FROM reports r JOIN posts p ON r.post_id = p.id
+            , r.autopsy_md, r.agent_results_json
+            FROM reports r JOIN posts p ON r.post_id = p.id
            ORDER BY r.created_at DESC"""
     ).fetchall()
     conn.close()
@@ -225,9 +302,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Validate minimum config
-    if not config.GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY is required. Get one free at https://aistudio.google.com")
+    # Validate minimum config (allow mock LLM mode without a Gemini key)
+    if not config.GEMINI_API_KEY and not getattr(config, 'MOCK_LLM', False):
+        logger.error("GEMINI_API_KEY is required unless MOCK_LLM=true. Get one free at https://aistudio.google.com")
         sys.exit(1)
 
     has_source = config.REDDIT_CLIENT_ID or config.BLUESKY_HANDLE or config.NEWS_RSS_FEEDS
@@ -246,7 +323,8 @@ def main() -> None:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """SELECT r.id, r.overall_verdict, r.created_at, p.platform
-                   FROM reports r JOIN posts p ON r.post_id = p.id
+                     , r.autopsy_md, r.agent_results_json
+                     FROM reports r JOIN posts p ON r.post_id = p.id
                    ORDER BY r.created_at DESC"""
             ).fetchall()
             conn.close()

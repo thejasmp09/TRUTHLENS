@@ -4,6 +4,7 @@ SQLite storage for processed posts and generated reports.
 
 import sqlite3
 import json
+from typing import Optional
 from datetime import datetime, timezone
 
 import config
@@ -47,6 +48,14 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_posts_processed ON posts(processed);
         CREATE INDEX IF NOT EXISTS idx_reports_published ON reports(published);
     """)
+    # Add agent_results_json column if missing (backwards-compatible)
+    cols = [c[1] for c in conn.execute("PRAGMA table_info(reports)").fetchall()]
+    if 'agent_results_json' not in cols:
+        try:
+            conn.execute("ALTER TABLE reports ADD COLUMN agent_results_json TEXT")
+        except Exception:
+            # If ALTER fails (older SQLite), ignore - it's non-critical
+            pass
     conn.close()
 
 
@@ -99,14 +108,15 @@ def save_report(
     autopsy_md: str,
     autopsy_html: str,
     overall_verdict: str,
-    confidence: str
+    confidence: str,
+    agent_results: Optional[dict] = None,
 ) -> int:
     conn = _connect()
     cur = conn.execute(
         """INSERT INTO reports
            (post_id, claims_json, verdicts_json, autopsy_md, autopsy_html,
-            overall_verdict, confidence, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            overall_verdict, confidence, agent_results_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             post_id,
             json.dumps(claims),
@@ -115,6 +125,7 @@ def save_report(
             autopsy_html,
             overall_verdict,
             confidence,
+            json.dumps(agent_results) if agent_results is not None else None,
             datetime.now(timezone.utc).isoformat(),
         ),
     )

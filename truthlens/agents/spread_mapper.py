@@ -18,14 +18,14 @@ class SpreadMapperAgent(BaseAgent):
     
     # Platform-specific search modifiers
     PLATFORM_SEARCHES = [
-        ("Reddit", 'site:reddit.com "{claim"}'),
-        ("Twitter/X", 'site:twitter.com OR site:x.com "{claim}"'),
-        ("Facebook", 'site:facebook.com "{claim}"'),
-        ("YouTube", 'site:youtube.com "{claim}"'),
-        ("TikTok", 'site:tiktok.com "{claim}"'),
-        ("News", '"{claim}" news'),
-        ("Blogs", '"{claim}" blog'),
-    ]
+    ("Reddit", 'site:reddit.com "{claim}"'),
+    ("Twitter/X", 'site:twitter.com OR site:x.com "{claim}"'),
+    ("Facebook", 'site:facebook.com "{claim}"'),
+    ("YouTube", 'site:youtube.com "{claim}"'),
+    ("TikTok", 'site:tiktok.com "{claim}"'),
+    ("News", '"{claim}" news'),
+    ("Blogs", '"{claim}" blog'),
+]
 
     def execute(self, context: dict) -> AgentResult:
         claims = context.get("claims", [])

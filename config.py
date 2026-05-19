@@ -106,3 +106,6 @@ print("Subreddits:", REDDIT_SUBREDDITS)
 print("Database:", DB_PATH)
 print("Reports Directory:", REPORTS_DIR)
 print("====================================")
+
+# Allow running without an LLM by using a deterministic mock (for testing)
+MOCK_LLM = os.environ.get("MOCK_LLM", "false").lower() in ("1", "true", "yes")

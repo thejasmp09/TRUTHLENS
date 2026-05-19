@@ -5,6 +5,8 @@ Uses Google Gemini (free tier).
 
 import json
 import logging
+import re
+import config
 from dataclasses import dataclass, field
 
 from truthlens.llm import call_gemini as _call_gemini
@@ -42,6 +44,14 @@ def extract_claims(text: str) -> list[str]:
     except json.JSONDecodeError:
         logger.warning("Failed to parse claims  JSON: %s",raw[:200])
 
+    # Fallback heuristics: when LLM doesn't return JSON (e.g., MOCK_LLM),
+    # try a simple sentence-splitting approach to extract candidate claims.
+    if getattr(config, "MOCK_LLM", False):
+        sentences = re.split(r'[\n\.\?!]+', text)
+        candidates = [s.strip() for s in sentences if len(s.strip()) > 30]
+        # return up to 5 candidate sentences as claims
+        return candidates[:5]
+
     return []
 
 
@@ -63,6 +73,7 @@ class AutopsyReport:
     markdown:str
     overall_verdict: str 
     confidence: str
+    agent_results: dict = None
 
 
 #---Multi-agent pipeline---
@@ -108,6 +119,7 @@ def analyze_post_with_agents(
             markdown=result.get("autopsy_md", ""),
             overall_verdict=result.get("overall_verdict", ""),
             confidence=result.get("confidence", 0.0),
+            agent_results=result.get("agent_results", {}),
         )
     
     except Exception:

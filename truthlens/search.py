@@ -6,7 +6,7 @@ Uses DuckDuckGo (free, no API key) and Google Fact Check API (free).
 import logging
 
 import requests
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 logger = logging.getLogger(__name__)
 
